@@ -8,16 +8,17 @@ Version
 
 UN/LOCODE data
 -------------------
-* from [UN ECE]
+* data from [UN ECE]
+* reference data from CSV "2014-2 UNLOCODE CodeListPart?.csv"
 
 Implementation
 -------------------
-* parse CVS files and store into sqlite DB
+* parse CSV files and store into sqlite DB
 * store the country/city in UTF-8 encoding
 
 Usage
 -------------------
-* initialize
+* initialize sqlite DB
 ```sh
 $ python pyunlocode.py
 ```
