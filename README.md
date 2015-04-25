@@ -1,2 +1,2 @@
 # pyunlocode
-Python wrap module for UN/Locode
+Python wrap module for UN/LOCODE
