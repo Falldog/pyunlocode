@@ -28,7 +28,7 @@ class Country():
         self.name = row[1]
 
 
-class UnLocode():
+class PyUnLocode():
     """
     Download from : http://www.unece.org/cefact/codesfortrade/codes_index.html
     Column Spec : http://www.unece.org/fileadmin/DAM/cefact/locode/Service/LocodeColumn.htm
@@ -125,7 +125,7 @@ class UnLocode():
 
 
 def main():
-    u = UnLocode()
+    u = PyUnLocode()
     u.init()
     u.gen_from_csv()
     print u.get_country_name('US')
