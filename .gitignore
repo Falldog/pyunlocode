@@ -1,2 +1,3 @@
 *.pyc
 unlocode.db
+.idea/*

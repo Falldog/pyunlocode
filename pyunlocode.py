@@ -5,7 +5,7 @@
 # @author : Falldog
 #
 import os
-import csv
+import parser
 import sqlite3
 from os.path import join
 
@@ -15,45 +15,53 @@ CSVDIR = join(CURDIR, 'csv')
 DB_PATH = join(CURDIR, 'unlocode.db')
 
 
-class City():
-    def __init__(self, row):
-        self.code = row[0]
-        self.name = row[1]
-        self.coordinate = row[2]
-
-
-class Country():
-    def __init__(self, row):
-        self.code = row[0]
-        self.name = row[1]
-
-
 class PyUnLocode():
     """
     Download from : http://www.unece.org/cefact/codesfortrade/codes_index.html
     Column Spec : http://www.unece.org/fileadmin/DAM/cefact/locode/Service/LocodeColumn.htm
-
-    Just store City & Country for "code", "name" & "coordinate"
     """
     def __init__(self):
         self.conn = None
 
-    def init(self):
-        self.conn = sqlite3.connect(DB_PATH)
+    def init(self, db_path=None):
+        if not db_path:
+            db_path = DB_PATH
+
+        self.conn = sqlite3.connect(db_path)
+        self.conn.row_factory = sqlite3.Row  # access query result as dict
 
         c = self.conn.cursor()
 
         c.executescript('''
             CREATE TABLE IF NOT EXISTS country (
-                code text PRIMARY KEY,
-                name text
-            );
-            CREATE TABLE IF NOT EXISTS city (
-                code text PRIMARY KEY,
+                code text,
                 name text,
-                coordinate text
+                PRIMARY KEY (code)
             );
-            CREATE UNIQUE INDEX IF NOT EXISTS city_code_index ON city(code);
+            CREATE TABLE IF NOT EXISTS subdivision (
+                country_code text,
+                subdivision_code text,
+                name text,
+                PRIMARY KEY (country_code, subdivision_code)
+            );
+            CREATE TABLE IF NOT EXISTS location (
+                country_code text,
+                location_code text,
+                name text,
+                subdivision text,
+                status text,
+                iata text,
+                coordinate text,
+                remark text,
+                is_port int,
+                is_airport int,
+                is_road_terminal int,
+                is_rail_terminal int,
+                is_postal_exchange_office int,
+                is_border_cross int,
+                PRIMARY KEY (country_code, location_code)
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS location_code_index ON location(country_code, location_code);
         ''')
         self.conn.commit()
 
@@ -67,72 +75,105 @@ class PyUnLocode():
         c = self.conn.cursor()
         c.execute('SELECT name FROM country WHERE code = ?', (code,))
         r = c.fetchone()
+        c.close()
         return r[0] if r else None
 
-    def get_city_name(self, code):
+    def get_location_name(self, country_code, location_code):
         """ return None if could not found """
         c = self.conn.cursor()
-        c.execute('SELECT name FROM city WHERE code = ?', (code,))
+        c.execute('SELECT name FROM location WHERE country_code = ? AND location_code = ?', (country_code, location_code))
         r = c.fetchone()
+        c.close()
         return r[0] if r else None
 
     def search_country_name_like(self, name):
         """ return [] if could not found """
         c = self.conn.cursor()
         c.execute('SELECT * FROM country WHERE name LIKE "%%%s%%"' % name)
-        return [Country(country) for country in c.fetchall()]
+        ret = c.fetchall()
+        c.close()
+        return ret
 
-    def search_city_name_like(self, name):
+    def search_location_name_like(self, name):
         """ return [] if could not found """
         c = self.conn.cursor()
-        c.execute('SELECT * FROM city WHERE name LIKE "%%%s%%"' % name)
-        return [City(city) for city in c.fetchall()]
+        c.execute('SELECT * FROM location WHERE name LIKE "%%%s%%"' % name)
+        ret = c.fetchall()
+        c.close()
+        return ret
 
     def gen_from_csv(self):
         c = self.conn.cursor()
-        city_set = set()
+        p_code = parser.CodeParser()
+        p_sub = parser.SubdivisionParser()
         for filename in os.listdir(CSVDIR):
             if os.path.splitext(filename)[1] != '.csv':
                 continue
+            if 'UNLOCODE' in filename:
+                p_code.parse(c, join(CSVDIR, filename))
+            elif 'Subdivision' in filename:
+                p_sub.parse(c, join(CSVDIR, filename))
+            else:
+                print 'skip unknow file : %s' % filename
 
-            with open(join(CSVDIR, filename), 'rb') as f:
-                data_reader = csv.reader(f, delimiter=',', quotechar='"')
-                for row in data_reader:
-                    country_code = row[1]
-
-                    if row[3] and row[3][0] == '.':  # country name
-                        name = row[3].decode('latin-1')[1:]  # ISO-8859-1, filter the first char "."
-                        name = name.split(',')[0]
-                        c.execute("INSERT OR REPLACE INTO country VALUES (?,?)", (country_code, name))
-
-                    else:  # city name
-                        city_code = country_code + row[2]
-                        if len(city_code) <= 2:
-                            print '*** skip invalid city code : ', city_code
-                            continue
-
-                        if city_code in city_set:
-                            print '*** skip duplicate city code : ', city_code
-                            continue
-                        else:
-                            city_set.add(city_code)
-
-                        name = row[4]
-                        coordinate = row[10] or ''
-                        c.execute("INSERT OR REPLACE INTO city VALUES (?,?,?)", (city_code, name, coordinate))
-
+        c.close()
         self.conn.commit()
+
+    def analytics(self, country=None):
+        if country:
+            country_limit = " AND country_code='%s'" % country
+            country_limit_where = " WHERE country_code='%s'" % country
+        else:
+            country_limit = ''
+            country_limit_where = ''
+
+        c = self.conn.cursor()
+        c.execute('SELECT COUNT(*) FROM country')
+        country_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM subdivision' + country_limit_where)
+        subdivision_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location' + country_limit_where)
+        location_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_airport=1' + country_limit)
+        airport_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_port=1' + country_limit)
+        port_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_road_terminal=1' + country_limit)
+        road_terminal_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_rail_terminal=1' + country_limit)
+        rail_terminal_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_postal_exchange_office=1' + country_limit)
+        postal_exchange_office_count = c.fetchone()[0]
+        c.execute('SELECT COUNT(*) FROM location WHERE is_border_cross=1' + country_limit)
+        border_cross_count = c.fetchone()[0]
+        c.close()
+
+        print '============= BEGIN ============='
+        print 'country count = %d' % country_count
+        if country:
+            print '*** search country : "%s" ***' % country
+        print 'subdivision count = %d' % subdivision_count
+        print 'location count = %d' % location_count
+        print 'port count = %d' % port_count
+        print 'airport count = %d' % airport_count
+        print 'road terminal count = %d' % road_terminal_count
+        print 'rail terminal count = %d' % rail_terminal_count
+        print 'postal exchange office count = %d' % postal_exchange_office_count
+        print 'border cross count = %d' % border_cross_count
+        print '============= END ============='
 
 
 def main():
     u = PyUnLocode()
     u.init()
     u.gen_from_csv()
+    u.analytics()
+    u.analytics('TW')
     print u.get_country_name('US')
-    print u.get_city_name('TWTPE')
-    r = u.search_city_name_like('LOS ANGELES')
+    print u.get_location_name('TW', 'TPE')
+    r = u.search_location_name_like('LOS ANGELES')
     for c in r:
-        print "code:%s name:%s" % (c.code, c.name)
+        print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
     u.close()
 
 if __name__ == '__main__':
