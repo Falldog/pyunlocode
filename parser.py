@@ -53,6 +53,17 @@ class CodeParser(object):
             # (name changed);
             = (reference entry);
             ! (US location with duplicate IATA code)
+        Column - Function:
+            0 Function not known, to be specified
+            1 Port, as defined in Rec 16
+            2 Rail Terminal
+            3 Road Terminal
+            4 Airport
+            5 Postal Exchange Office
+            6 Multimodal Functions (ICDs, etc.)
+            7 Fixed Transport Functions (e.g. Oil platform)
+            8 Inland Port
+            B Border Crossing
         Column - Date:
             ym
         Column - Coordinate:
@@ -66,6 +77,8 @@ class CodeParser(object):
                 if change == 'X':  # skip removed item
                     continue
                 elif change == '=':  # skip reference entry ex: "Peking = Beijing"
+                    continue
+                elif change == '\xa6':  # '|' skip non location entry
                     continue
 
                 change, country_code, location_code, location_name, location_name_wo_diacritics, subdivision, function, status, date, iata, coordinate, remark = row
@@ -91,6 +104,19 @@ class CodeParser(object):
                     is_postal_exchange_office = '5' in function
                     is_border_cross = 'B' in function
 
+                    # insert by replace, or will cause primary key conflict exception
+                    # most case is alternative name switch (ONLY)
+                    # Ex:
+                    #   AX MHQ : "Maarianhamina (Mariehamn)" vs "Mariehamn (Maarianhamina)"
+                    #   BE BTS : "Bassenge (Bitsingen)" vs "Bitsingen (Bassenge)"
+                    #
+                    # rarely case maybe all different
+                    # Ex:
+                    #   ,"US","LEB","Hanover-Lebanon-White River Apt","Hanover-Lebanon-White River Apt","NH","--34----","AI","0307",,"4338N 07215W",
+                    #   ,"US","LEB","Lebanon-White River-Hanover Apt","Lebanon-White River-Hanover Apt","VT","---4----","AI","9601",,,
+                    #   ,"US","LEB","White River-Hanover-Lebanon Apt","White River-Hanover-Lebanon Apt","VT","---4----","AI","0001",,,
+                    #
+                    # for these rarely case replace by last record
                     cursor.execute(
                         "INSERT OR REPLACE INTO location VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (country_code,
