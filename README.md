@@ -9,12 +9,12 @@ Version
 UN/LOCODE data
 -------------------
 * data from [UN ECE]
-* reference data from CSV "2014-2 UNLOCODE CodeListPart?.csv"
+* reference data from CSV "{yyyy}-{v} SubdivisionCodes.csv" & "{yyyy}-{v} UNLOCODE CodeListPart?.csv"
 
 Implementation
 -------------------
 * parse CSV files and store into sqlite DB
-* store the country/city in UTF-8 encoding
+* store the country/subdivision/location in UTF-8 encoding
 
 Usage
 -------------------
@@ -32,5 +32,40 @@ print u.get_city_name('TWTPE')
 u.close()
 ```
 
+SQLite Table
+-------------------
+* country
+
+| field    | type      |
+|----------|-----------|
+| code     | text (PK) |
+| name     | text      |
+
+* subdivision
+
+| field            | type      |
+|------------------|-----------|
+| country_code     | text (PK) |
+| subdivision_code | text (PK) |
+| name             | text      |
+
+* location
+
+| field                     | type      |
+|---------------------------|-----------|
+| country_code              | text (PK) |
+| location_code             | text (PK) |
+| name                      | text      |
+| subdivision               | text      |
+| status                    | text      |
+| iata                      | text      |
+| coordinate                | text      |
+| remark                    | text      |
+| is_port                   | int       |
+| is_airport                | int       |
+| is_road_terminal          | int       |
+| is_rail_terminal          | int       |
+| is_postal_exchange_office | int       |
+| is_border_cross           | int       |
 
 [UN ECE]: http://www.unece.org/cefact/codesfortrade/codes_index.html
