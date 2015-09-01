@@ -78,6 +78,25 @@ class PyUnLocode():
         c.close()
         return r[0] if r else None
 
+    def get_iata_location(self, code):
+        """
+        IATA location may not be defined as airport
+        reference : https://en.wikipedia.org/wiki/UN/LOCODE
+        """
+        if len(code) != 3:
+            raise ValueError
+
+        c = self.conn.cursor()
+        c.execute("""
+            SELECT country_code, location_code, name
+            FROM location
+            WHERE (location_code=? AND is_airport=1) OR (iata=? AND is_airport=1)
+            """,
+            (code, code))
+        r = c.fetchall()
+        c.close()
+        return r
+
     def get_location_name(self, country_code, location_code):
         """ return None if could not found """
         c = self.conn.cursor()
@@ -97,7 +116,21 @@ class PyUnLocode():
     def search_location_name_like(self, name):
         """ return [] if could not found """
         c = self.conn.cursor()
-        c.execute('SELECT * FROM location WHERE name LIKE "%%%s%%"' % name)
+        name = name.replace("'", "''")
+        c.execute("SELECT * FROM location WHERE name LIKE '%%%s%%'" % name)
+        ret = c.fetchall()
+        c.close()
+        return ret
+
+    def search_port_name_like(self, name):
+        """ return [] if could not found """
+        c = self.conn.cursor()
+        name = name.replace("'", "''")
+        c.execute("""
+            SELECT country_code, location_code, name, subdivision, is_port
+            FROM location
+            WHERE name LIKE '%%%s%%' AND is_port=1
+        """ % name)
         ret = c.fetchall()
         c.close()
         return ret
