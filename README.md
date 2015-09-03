@@ -28,7 +28,7 @@ import pyunlocode
 u = pyunlocode.PyUnLocode()
 u.init()
 print u.get_country_name('US')
-print u.get_city_name('TWTPE')
+print u.get_city_name('TW', 'TPE')
 u.close()
 ```
 

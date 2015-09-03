@@ -61,7 +61,14 @@ class PyUnLocode():
                 is_border_cross int,
                 PRIMARY KEY (country_code, location_code)
             );
-            CREATE UNIQUE INDEX IF NOT EXISTS location_code_index ON location(country_code, location_code);
+
+            CREATE UNIQUE INDEX IF NOT EXISTS location_index ON location(
+                country_code,
+                location_code,
+                name,
+                is_port,
+                is_airport
+            );
         ''')
         self.conn.commit()
 
@@ -69,6 +76,27 @@ class PyUnLocode():
         if self.conn:
             self.conn.close()
             self.conn = None
+
+    def get_all_country(self):
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM country')
+        r = c.fetchall()
+        c.close()
+        return r
+
+    def get_all_subdivision(self):
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM subdivision')
+        r = c.fetchall()
+        c.close()
+        return r
+
+    def get_all_location(self):
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM location')
+        r = c.fetchall()
+        c.close()
+        return r
 
     def get_country_name(self, code):
         """ return None if could not found """
@@ -149,8 +177,8 @@ class PyUnLocode():
             else:
                 print 'skip unknow file : %s' % filename
 
-        c.close()
         self.conn.commit()
+        c.close()
 
     def analytics(self, country=None):
         if country:
@@ -197,17 +225,22 @@ class PyUnLocode():
 
 
 def main():
-    u = PyUnLocode()
-    u.init()
-    u.gen_from_csv()
-    u.analytics()
-    u.analytics('TW')
-    print u.get_country_name('US')
-    print u.get_location_name('TW', 'TPE')
-    r = u.search_location_name_like('LOS ANGELES')
-    for c in r:
-        print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
-    u.close()
+    try:
+        u = PyUnLocode()
+        u.init()
+        u.gen_from_csv()
+        u.analytics()
+        u.analytics('TW')
+        print u.get_country_name('US')
+        print u.get_location_name('TW', 'TPE')
+        r = u.search_location_name_like('LOS ANGELES')
+        for c in r:
+            print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
+        u.close()
+
+    except:
+        import traceback
+        traceback.print_exc()
 
 if __name__ == '__main__':
     main()
