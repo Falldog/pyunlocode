@@ -10,7 +10,7 @@ chdir('..')
 package_data.append('unlocode.db')
 
 setup(name='pyunlocode',
-      version='0.0.1',
+      version='0.0.2',
       description='Librarys to check zones configuered on a server are working',
       author='Falldog and John Bond',
       author_email='pypi@johnbond.org',
@@ -18,10 +18,5 @@ setup(name='pyunlocode',
       license='Artistic-2.0',
       packages=['pyunlocode'],
       keywords='',
-      install_requires=[
-          'math',
-          'sqlite3',
-          'csv',
-          ],
       package_data={'pyunlocode' : package_data }
      )
