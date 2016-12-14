@@ -5,6 +5,7 @@
 # @author : Falldog
 #
 import os
+import math
 import parser
 import sqlite3
 from os.path import join
@@ -20,8 +21,23 @@ class PyUnLocode():
     Download from : http://www.unece.org/cefact/codesfortrade/codes_index.html
     Column Spec : http://www.unece.org/fileadmin/DAM/cefact/locode/Service/LocodeColumn.htm
     """
-    def __init__(self):
+    common_country_errors = {
+            'COTE D\'IVOIRE'                 : u'C\xd4TE D\'IVOIRE',
+            'ENGLAND'                        : u'UNITED KINGDOM',
+            'RUSSIA'                         : u'RUSSIAN FEDERATION',
+            'REUNION'                        : u'R\xc9UNION',
+            'PEOPLE\'S REPUBLIC OF CHINA'    : u'CHINA',
+            'FEDERATED STATES OF MICRONESIA' : u'MICRONESIA, FEDERATED STATES OF',
+            'SOUTH KOREA'                    : u'KOREA, REPUBLIC OF',
+            'BOLIVIA'                        : u'BOLIVIA, PLURINATIONAL STATE OF',
+            'TANZANIA'                       : u'TANZANIA, UNITED REPUBLIC OF',
+            }
+    common_region_errors = { }
+    common_location_errors = { }
+    def __init__(self, run_init=True):
         self.conn = None
+        if run_init:
+            self.init()
 
     def init(self, db_path=None):
         if not db_path:
@@ -51,7 +67,8 @@ class PyUnLocode():
                 subdivision text,
                 status text,
                 iata text,
-                coordinate text,
+                longitude int,
+                latitude int,
                 remark text,
                 is_port int,
                 is_airport int,
@@ -133,10 +150,46 @@ class PyUnLocode():
         c.close()
         return r[0] if r else None
 
+    def search_country_name(self, name):
+        """ return [] if could not found """
+        name = name.upper()
+        if name in self.common_country_errors.keys():
+            name = self.common_country_errors[name]
+
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM country WHERE name = ?', (name, ))
+        ret = c.fetchall()
+        c.close()
+        return ret
+
     def search_country_name_like(self, name):
         """ return [] if could not found """
         c = self.conn.cursor()
         c.execute('SELECT * FROM country WHERE name LIKE "%%%s%%"' % name)
+        ret = c.fetchall()
+        c.close()
+        return ret
+
+    def search_country_region_name(self, country_code, name):
+        """ return [] if could not found """
+        name = name.upper()
+        if name in self.common_region_errors.keys():
+            name = self.common_region_errors[name]
+
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM subdivision WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name))
+        ret = c.fetchall()
+        c.close()
+        return ret
+
+    def search_country_region_location_name(self, country_code, region_code, name):
+        """ return [] if could not found """
+        name = name.upper()
+        if name in self.common_location_errors.keys():
+            name = self.common_location_errors[name]
+
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM location WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name) )
         ret = c.fetchall()
         c.close()
         return ret
@@ -149,6 +202,25 @@ class PyUnLocode():
         ret = c.fetchall()
         c.close()
         return ret
+
+    def iata_to_locode(self, iata):
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM location WHERE location_code = ?', (iata.uppper(), ))
+        r = c.fetchone()
+        c.close()
+        return '{}-{}'.format(r[0], r[3]) if r else None
+
+    def search_airport_coordinates(self, latitude, longitude):
+        """ search for an aiport based on coordinates """
+        #http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
+        fudge    = math.pow(math.cos(math.radians(latitude)),2)
+        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
+                latitude, longitude, fudge)
+        c = self.conn.cursor()
+        c.execute('SELECT * FROM location WHERE is_airport = 1 ORDER BY {} LIMIT 1'.format(order_by))
+        r = c.fetchone()
+        c.close()
+        return r if r else None
 
     def search_port_name_like(self, name):
         """ return [] if could not found """

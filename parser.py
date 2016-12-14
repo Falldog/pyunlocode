@@ -83,9 +83,24 @@ class CodeParser(object):
 
                 change, country_code, location_code, location_name, location_name_wo_diacritics, subdivision, function, status, date, iata, coordinate, remark = row
 
+                coordinates = coordinate.split()
+                longitude = 91
+                latitude  = 91
+
+                if len(coordinates) == 2:
+                    latitude            = float(coordinates[0][:-1]) / 100
+                    latitude_direction  = coordinates[0][-1]
+                    longitude           = float(coordinates[1][:-1]) / 100
+                    longitude_direction = coordinates[1][-1]
+                    if latitude_direction == 'S':
+                        latitude *= -1
+                    if longitude_direction == 'W':
+                        longitude *= -1
+
                 if location_name and location_name[0] == '.':  # country name
                     name = location_name.decode(ENCODING)[1:]  # filter the first char "."
-                    name = name.split(',')[0]
+                    # Not sure why this is done as it looses information such as Korea, republic of
+                    # name = name.split(',')[0]
                     cursor.execute(
                         "INSERT OR REPLACE INTO country VALUES (?,?)",
                         (country_code, name)
@@ -118,14 +133,15 @@ class CodeParser(object):
                     #
                     # for these rarely case replace by last record
                     cursor.execute(
-                        "INSERT OR REPLACE INTO location VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        "INSERT OR REPLACE INTO location VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (country_code,
                          location_code,
                          location_name_wo_diacritics,
                          subdivision,
                          status,
                          iata,
-                         coordinate,
+                         longitude,
+                         latitude,
                          remark,
                          boolean(is_port),
                          boolean(is_airport),
