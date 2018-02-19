@@ -31,9 +31,13 @@ class PyUnLocode():
             'SOUTH KOREA'                    : u'KOREA, REPUBLIC OF',
             'BOLIVIA'                        : u'BOLIVIA, PLURINATIONAL STATE OF',
             'TANZANIA'                       : u'TANZANIA, UNITED REPUBLIC OF',
+            'PALESTINE'                      : u'PALESTINE, STATE OF',
             }
     common_region_errors = { }
-    common_location_errors = { }
+    common_location_errors = {
+            'Ramallah': 'Ramallah (Ram Allah)',
+            'Yekaterinburg': 'Yekaterinburg (Ekaterinburg)',
+    }
     def __init__(self, run_init=True):
         self.conn = None
         if run_init:
@@ -184,12 +188,14 @@ class PyUnLocode():
 
     def search_country_region_location_name(self, country_code, region_code, name):
         """ return [] if could not found """
-        name = name.upper()
         if name in self.common_location_errors.keys():
             name = self.common_location_errors[name]
 
         c = self.conn.cursor()
-        c.execute('SELECT * FROM location WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name) )
+        if region_code:
+            c.execute('SELECT * FROM location WHERE country_code = ? and subdivision = ? and name = ? COLLATE NOCASE', (country_code, region_code, name) )
+        else:
+            c.execute('SELECT * FROM location WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name) )
         ret = c.fetchall()
         c.close()
         return ret
@@ -203,9 +209,14 @@ class PyUnLocode():
         c.close()
         return ret
 
-    def iata_to_locode(self, iata):
+    def iata_to_locode(self, iata, country_code=None):
         c = self.conn.cursor()
-        c.execute('SELECT * FROM location WHERE location_code = ?', (iata.upper(), ))
+        if country_code:
+            c.execute(
+                    'SELECT * FROM location WHERE location_code = ? and country_code = ?',
+                    (iata.upper(), country_code.upper(), ))
+        else:
+            c.execute('SELECT * FROM location WHERE location_code = ?', (iata.upper(), ))
         r = c.fetchone()
         c.close()
         return '{}-{}'.format(r[0], r[1]).lower() if r else None
