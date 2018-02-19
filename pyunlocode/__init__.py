@@ -205,10 +205,10 @@ class PyUnLocode():
 
     def iata_to_locode(self, iata):
         c = self.conn.cursor()
-        c.execute('SELECT * FROM location WHERE location_code = ?', (iata.uppper(), ))
+        c.execute('SELECT * FROM location WHERE location_code = ?', (iata.upper(), ))
         r = c.fetchone()
         c.close()
-        return '{}-{}'.format(r[0], r[3]) if r else None
+        return '{}-{}'.format(r[0], r[1]).lower() if r else None
 
     def search_airport_coordinates(self, latitude, longitude):
         """ search for an aiport based on coordinates """
