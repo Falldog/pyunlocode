@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# 
+#
 # Create on : 2015/04/19
 #
 # @author : Falldog
@@ -22,22 +22,23 @@ class PyUnLocode():
     Column Spec : http://www.unece.org/fileadmin/DAM/cefact/locode/Service/LocodeColumn.htm
     """
     common_country_errors = {
-            'COTE D\'IVOIRE'                 : u'C\xd4TE D\'IVOIRE',
-            'ENGLAND'                        : u'UNITED KINGDOM',
-            'RUSSIA'                         : u'RUSSIAN FEDERATION',
-            'REUNION'                        : u'R\xc9UNION',
-            'PEOPLE\'S REPUBLIC OF CHINA'    : u'CHINA',
-            'FEDERATED STATES OF MICRONESIA' : u'MICRONESIA, FEDERATED STATES OF',
-            'SOUTH KOREA'                    : u'KOREA, REPUBLIC OF',
-            'BOLIVIA'                        : u'BOLIVIA, PLURINATIONAL STATE OF',
-            'TANZANIA'                       : u'TANZANIA, UNITED REPUBLIC OF',
-            'PALESTINE'                      : u'PALESTINE, STATE OF',
+            'COTE D\'IVOIRE': u'C\xd4TE D\'IVOIRE',
+            'ENGLAND': u'UNITED KINGDOM',
+            'RUSSIA': u'RUSSIAN FEDERATION',
+            'REUNION': u'R\xc9UNION',
+            'PEOPLE\'S REPUBLIC OF CHINA': u'CHINA',
+            'FEDERATED STATES OF MICRONESIA': u'MICRONESIA, FEDERATED STATES OF',
+            'SOUTH KOREA': u'KOREA, REPUBLIC OF',
+            'BOLIVIA': u'BOLIVIA, PLURINATIONAL STATE OF',
+            'TANZANIA': u'TANZANIA, UNITED REPUBLIC OF',
+            'PALESTINE': u'PALESTINE, STATE OF',
             }
-    common_region_errors = { }
+    common_region_errors = {}
     common_location_errors = {
             'Ramallah': 'Ramallah (Ram Allah)',
             'Yekaterinburg': 'Yekaterinburg (Ekaterinburg)',
     }
+
     def __init__(self, run_init=True):
         self.conn = None
         if run_init:
@@ -136,7 +137,8 @@ class PyUnLocode():
             raise ValueError
 
         c = self.conn.cursor()
-        c.execute("""
+        c.execute(
+            """
             SELECT country_code, location_code, name
             FROM location
             WHERE (location_code=? AND is_airport=1) OR (iata=? AND is_airport=1)
@@ -149,7 +151,9 @@ class PyUnLocode():
     def get_location_name(self, country_code, location_code):
         """ return None if could not found """
         c = self.conn.cursor()
-        c.execute('SELECT name FROM location WHERE country_code = ? AND location_code = ?', (country_code, location_code))
+        c.execute(
+                'SELECT name FROM location WHERE country_code = ? AND location_code = ?',
+                (country_code, location_code))
         r = c.fetchone()
         c.close()
         return r[0] if r else None
@@ -193,9 +197,20 @@ class PyUnLocode():
 
         c = self.conn.cursor()
         if region_code:
-            c.execute('SELECT * FROM location WHERE country_code = ? and subdivision = ? and name = ? COLLATE NOCASE', (country_code, region_code, name) )
+            c.execute(
+                    '''
+                    SELECT * FROM location WHERE
+                    country_code = ? and subdivision = ? and name LIKE ?
+                    COLLATE NOCASE
+                    ''',
+                    (country_code, region_code, '{}%'.format(name)))
         else:
-            c.execute('SELECT * FROM location WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name) )
+            c.execute(
+                    '''
+                    SELECT * FROM location
+                    WHERE country_code = ? and name LIKE ?
+                    COLLATE NOCASE''',
+                    (country_code, '{}%'.format(name)))
         ret = c.fetchall()
         c.close()
         return ret
@@ -221,30 +236,68 @@ class PyUnLocode():
         c.close()
         return '{}-{}'.format(r[0], r[1]).lower() if r else None
 
-    def search_airport_coordinates(self, latitude, longitude):
+    def search_coordinates_airport(self, latitude, longitude, country_code):
         """ search for an aiport based on coordinates """
-        #http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
-        fudge    = math.pow(math.cos(math.radians(latitude)),2)
-        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
-                latitude, longitude, fudge)
-        c = self.conn.cursor()
-        c.execute('SELECT * FROM location WHERE is_airport = 1 ORDER BY {} LIMIT 1'.format(order_by))
-        r = c.fetchone()
-        c.close()
-        return r if r else None
-
-    def search_coordinates(self, latitude, longitude, country_code, airport=False):
-        """ search for an location based on coordinates """
         # http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
         fudge = math.pow(math.cos(math.radians(latitude)), 2)
         order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
                 latitude, longitude, fudge)
         c = self.conn.cursor()
-        if airport:
-            c.execute('SELECT * FROM location WHERE is_airport = 1 and country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
+        c.execute(
+                '''
+                SELECT * FROM location
+                WHERE is_airport = 1 and country_code = ?
+                ORDER BY {} LIMIT 1
+                '''.format(order_by),
+                (country_code, ))
+        r = c.fetchone()
+        c.close()
+        return r if r else None
+
+    def search_coordinates_postal(self, latitude, longitude, country_code):
+        """ search for an location based on coordinates """
+        fudge = math.pow(math.cos(math.radians(latitude)), 2)
+        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
+                latitude, longitude, fudge)
+        c = self.conn.cursor()
+        c.execute(
+                '''
+                SELECT * FROM location
+                WHERE is_postal_exchange_office = 1 and country_code = ?
+                ORDER BY {} LIMIT 1
+                '''.format(
+                    order_by),
                 (country_code.upper(),))
-        else:
-            c.execute('SELECT * FROM location WHERE country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
+        r = c.fetchone()
+        c.close()
+        return r if r else None
+
+    def search_coordinates_port(self, latitude, longitude, country_code):
+        """ search for an location based on coordinates """
+        fudge = math.pow(math.cos(math.radians(latitude)), 2)
+        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
+                latitude, longitude, fudge)
+        c = self.conn.cursor()
+        c.execute(
+                '''
+                SELECT * FROM location
+                WHERE is_port = 1 and country_code = ?
+                ORDER BY {} LIMIT 1
+                '''.format(
+                    order_by),
+                (country_code.upper(),))
+        r = c.fetchone()
+        c.close()
+        return r if r else None
+
+    def search_coordinates(self, latitude, longitude, country_code):
+        """ search for an location based on coordinates """
+        fudge = math.pow(math.cos(math.radians(latitude)), 2)
+        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
+                latitude, longitude, fudge)
+        c = self.conn.cursor()
+        c.execute(
+                'SELECT * FROM location WHERE country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
                 (country_code.upper(),))
         r = c.fetchone()
         c.close()
@@ -338,10 +391,10 @@ def main():
             print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
         u.close()
 
-    except:
+    except: # noqa
         import traceback
         traceback.print_exc()
 
+
 if __name__ == '__main__':
     main()
-
