@@ -233,6 +233,23 @@ class PyUnLocode():
         c.close()
         return r if r else None
 
+    def search_coordinates(self, latitude, longitude, country_code, airport=False):
+        """ search for an location based on coordinates """
+        # http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
+        fudge = math.pow(math.cos(math.radians(latitude)), 2)
+        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
+                latitude, longitude, fudge)
+        c = self.conn.cursor()
+        if airport:
+            c.execute('SELECT * FROM location WHERE is_airport = 1 and country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
+                (country_code.upper(),))
+        else:
+            c.execute('SELECT * FROM location WHERE country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
+                (country_code.upper(),))
+        r = c.fetchone()
+        c.close()
+        return r if r else None
+
     def search_port_name_like(self, name):
         """ return [] if could not found """
         c = self.conn.cursor()
