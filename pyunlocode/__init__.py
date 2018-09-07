@@ -250,7 +250,7 @@ class PyUnLocode():
                 ORDER BY {} LIMIT 1
                 '''.format(order_by),
                 (country_code, ))
-        r = c.fetchone()
+        r = c.fetchall()
         c.close()
         return r if r else None
 
@@ -268,7 +268,7 @@ class PyUnLocode():
                 '''.format(
                     order_by),
                 (country_code.upper(),))
-        r = c.fetchone()
+        r = c.fetchall()
         c.close()
         return r if r else None
 
@@ -286,7 +286,7 @@ class PyUnLocode():
                 '''.format(
                     order_by),
                 (country_code.upper(),))
-        r = c.fetchone()
+        r = c.fetchall()
         c.close()
         return r if r else None
 
@@ -299,7 +299,7 @@ class PyUnLocode():
         c.execute(
                 'SELECT * FROM location WHERE country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
                 (country_code.upper(),))
-        r = c.fetchone()
+        r = c.fetchall()
         c.close()
         return r if r else None
 

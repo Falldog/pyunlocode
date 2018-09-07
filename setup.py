@@ -10,7 +10,7 @@ chdir('..')
 package_data.append('unlocode.db')
 
 setup(name='pyunlocode',
-      version='0.0.5',
+      version='0.0.7',
       description='Librarys to check zones configuered on a server are working',
       author='Falldog and John Bond',
       author_email='pypi@johnbond.org',
