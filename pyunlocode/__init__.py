@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+"""Module to interface with UN/LOCODE """
 #
 # Create on : 2015/04/19
 #
@@ -7,8 +8,10 @@
 import os
 import math
 import sqlite3
+
 from os.path import join
-from pyunlocode import parser
+
+from . import parser
 
 
 CURDIR = os.path.abspath(os.path.dirname(__file__))
@@ -16,27 +19,28 @@ CSVDIR = join(CURDIR, 'csv')
 DB_PATH = join(CURDIR, 'unlocode.db')
 
 
-class PyUnLocode():
+class PyUnLocode:
     """
     Download from : http://www.unece.org/cefact/codesfortrade/codes_index.html
     Column Spec : http://www.unece.org/fileadmin/DAM/cefact/locode/Service/LocodeColumn.htm
     """
+
     common_country_errors = {
-            'COTE D\'IVOIRE': u'C\xd4TE D\'IVOIRE',
-            'ENGLAND': u'UNITED KINGDOM',
-            'RUSSIA': u'RUSSIAN FEDERATION',
-            'REUNION': u'R\xc9UNION',
-            'PEOPLE\'S REPUBLIC OF CHINA': u'CHINA',
-            'FEDERATED STATES OF MICRONESIA': u'MICRONESIA, FEDERATED STATES OF',
-            'SOUTH KOREA': u'KOREA, REPUBLIC OF',
-            'BOLIVIA': u'BOLIVIA, PLURINATIONAL STATE OF',
-            'TANZANIA': u'TANZANIA, UNITED REPUBLIC OF',
-            'PALESTINE': u'PALESTINE, STATE OF',
-            }
+        'COTE D\'IVOIRE': 'C\xd4TE D\'IVOIRE',
+        'ENGLAND': 'UNITED KINGDOM',
+        'RUSSIA': 'RUSSIAN FEDERATION',
+        'REUNION': 'R\xc9UNION',
+        'PEOPLE\'S REPUBLIC OF CHINA': 'CHINA',
+        'FEDERATED STATES OF MICRONESIA': 'MICRONESIA, FEDERATED STATES OF',
+        'SOUTH KOREA': 'KOREA, REPUBLIC OF',
+        'BOLIVIA': 'BOLIVIA, PLURINATIONAL STATE OF',
+        'TANZANIA': 'TANZANIA, UNITED REPUBLIC OF',
+        'PALESTINE': 'PALESTINE, STATE OF',
+    }
     common_region_errors = {}
     common_location_errors = {
-            'Ramallah': 'Ramallah (Ram Allah)',
-            'Yekaterinburg': 'Yekaterinburg (Ekaterinburg)',
+        'Ramallah': 'Ramallah (Ram Allah)',
+        'Yekaterinburg': 'Yekaterinburg (Ekaterinburg)',
     }
 
     def __init__(self, run_init=True):
@@ -45,6 +49,7 @@ class PyUnLocode():
             self.init()
 
     def init(self, db_path=None):
+        """Initialise the DB."""
         if not db_path:
             db_path = DB_PATH
 
@@ -53,7 +58,8 @@ class PyUnLocode():
 
         c = self.conn.cursor()
 
-        c.executescript('''
+        c.executescript(
+            '''
             CREATE TABLE IF NOT EXISTS country (
                 code text,
                 name text,
@@ -91,15 +97,18 @@ class PyUnLocode():
                 is_port,
                 is_airport
             );
-        ''')
+        '''
+        )
         self.conn.commit()
 
     def close(self):
+        """Close the connection."""
         if self.conn:
             self.conn.close()
             self.conn = None
 
     def get_all_country(self):
+        """Return all country codes."""
         c = self.conn.cursor()
         c.execute('SELECT * FROM country')
         r = c.fetchall()
@@ -107,6 +116,7 @@ class PyUnLocode():
         return r
 
     def get_all_subdivision(self):
+        """Return all subdivisions."""
         c = self.conn.cursor()
         c.execute('SELECT * FROM subdivision')
         r = c.fetchall()
@@ -114,6 +124,7 @@ class PyUnLocode():
         return r
 
     def get_all_location(self):
+        """Return all locations."""
         c = self.conn.cursor()
         c.execute('SELECT * FROM location')
         r = c.fetchall()
@@ -121,7 +132,7 @@ class PyUnLocode():
         return r
 
     def get_country_name(self, code):
-        """ return None if could not found """
+        """Return None if could not found"""
         c = self.conn.cursor()
         c.execute('SELECT name FROM country WHERE code = ?', (code,))
         r = c.fetchone()
@@ -143,180 +154,202 @@ class PyUnLocode():
             FROM location
             WHERE (location_code=? AND is_airport=1) OR (iata=? AND is_airport=1)
             """,
-            (code, code))
+            (code, code),
+        )
         r = c.fetchall()
         c.close()
         return r
 
     def get_location_name(self, country_code, location_code):
-        """ return None if could not found """
+        """return None if could not found"""
         c = self.conn.cursor()
         c.execute(
-                'SELECT name FROM location WHERE country_code = ? AND location_code = ?',
-                (country_code, location_code))
+            'SELECT name FROM location WHERE country_code = ? AND location_code = ?',
+            (country_code, location_code),
+        )
         r = c.fetchone()
         c.close()
         return r[0] if r else None
 
     def search_country_name(self, name):
-        """ return [] if could not found """
+        """return [] if could not found"""
         name = name.upper()
-        if name in self.common_country_errors.keys():
-            name = self.common_country_errors[name]
+        name = self.common_region_errors.get(name, name)
 
         c = self.conn.cursor()
-        c.execute('SELECT * FROM country WHERE name = ?', (name, ))
+        c.execute('SELECT * FROM country WHERE name = ?', (name,))
         ret = c.fetchall()
         c.close()
         return ret
 
     def search_country_name_like(self, name):
-        """ return [] if could not found """
+        """return [] if could not found"""
         c = self.conn.cursor()
-        c.execute('SELECT * FROM country WHERE name LIKE "%%%s%%"' % name)
+        c.execute(f'SELECT * FROM country WHERE name LIKE "%%{name}%%"')
         ret = c.fetchall()
         c.close()
         return ret
 
     def search_country_region_name(self, country_code, name):
-        """ return [] if could not found """
+        """return [] if could not found"""
         name = name.upper()
-        if name in self.common_region_errors.keys():
-            name = self.common_region_errors[name]
+        name = self.common_region_errors.get(name, name)
 
         c = self.conn.cursor()
-        c.execute('SELECT * FROM subdivision WHERE country_code = ? and name = ? COLLATE NOCASE', (country_code, name))
+        c.execute(
+            'SELECT * FROM subdivision WHERE country_code = ? and name = ? COLLATE NOCASE',
+            (country_code, name),
+        )
         ret = c.fetchall()
         c.close()
         return ret
 
     def search_country_region_location_name(self, country_code, region_code, name):
-        """ return [] if could not found """
-        if name in self.common_location_errors.keys():
-            name = self.common_location_errors[name]
+        """return [] if could not found"""
+        # Bug everywhere elses we do the following first
+        # name = name.upper()
+        name = self.common_location_errors.get(name, name)
 
         c = self.conn.cursor()
         if region_code:
             c.execute(
-                    '''
+                '''
                     SELECT * FROM location WHERE
                     country_code = ? and subdivision = ? and name LIKE ?
                     COLLATE NOCASE
                     ''',
-                    (country_code, region_code, '{}%'.format(name)))
+                (country_code, region_code, f'{name}%'),
+            )
         else:
             c.execute(
-                    '''
+                '''
                     SELECT * FROM location
                     WHERE country_code = ? and name LIKE ?
                     COLLATE NOCASE''',
-                    (country_code, '{}%'.format(name)))
+                (country_code, f'{name}%'),
+            )
         ret = c.fetchall()
         c.close()
         return ret
 
     def search_location_name_like(self, name):
-        """ return [] if could not found """
+        """return [] if could not found"""
         c = self.conn.cursor()
         name = name.replace("'", "''")
-        c.execute("SELECT * FROM location WHERE name LIKE '%%%s%%'" % name)
+        c.execute("SELECT * FROM location WHERE name LIKE '%%{name}%%'")
         ret = c.fetchall()
         c.close()
         return ret
 
     def iata_to_locode(self, iata, country_code=None):
+        """Convert an IATA code to a UN/Locode."""
         c = self.conn.cursor()
         if country_code:
             c.execute(
-                    'SELECT * FROM location WHERE location_code = ? and country_code = ?',
-                    (iata.upper(), country_code.upper(), ))
+                'SELECT * FROM location WHERE location_code = ? and country_code = ?',
+                (
+                    iata.upper(),
+                    country_code.upper(),
+                ),
+            )
         else:
-            c.execute('SELECT * FROM location WHERE location_code = ?', (iata.upper(), ))
+            c.execute('SELECT * FROM location WHERE location_code = ?', (iata.upper(),))
         r = c.fetchone()
         c.close()
-        return '{}-{}'.format(r[0], r[1]).lower() if r else None
+        return '{r[0]}-{r[1]}'.lower() if r else None
 
     def search_coordinates_airport(self, latitude, longitude, country_code):
-        """ search for an aiport based on coordinates """
+        """search for an aiport based on coordinates"""
         # http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
         fudge = math.pow(math.cos(math.radians(latitude)), 2)
-        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
-                latitude, longitude, fudge)
+        order_by = (
+            f'(({latitude} - latitude) * ({latitude} - latitude) +'
+            f'({longitude} - longitude) * ({longitude} - longitude) * {fudge})'
+        )
         c = self.conn.cursor()
         c.execute(
-                '''
-                SELECT * FROM location
-                WHERE is_airport = 1 and country_code = ?
-                ORDER BY {} LIMIT 1
-                '''.format(order_by),
-                (country_code, ))
+            f'''
+            SELECT * FROM location
+            WHERE is_airport = 1 and country_code = ?
+            ORDER BY {order_by} LIMIT 1
+            ''', (country_code,),
+        )
         r = c.fetchall()
         c.close()
         return r if r else None
 
     def search_coordinates_postal(self, latitude, longitude, country_code):
-        """ search for an location based on coordinates """
+        """search for an location based on coordinates"""
         fudge = math.pow(math.cos(math.radians(latitude)), 2)
-        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
-                latitude, longitude, fudge)
+        order_by = (
+            f'(({latitude} - latitude) * ({latitude} - latitude) +'
+            f'({longitude} - longitude) * ({longitude} - longitude) * {fudge})'
+        )
         c = self.conn.cursor()
         c.execute(
-                '''
-                SELECT * FROM location
-                WHERE is_postal_exchange_office = 1 and country_code = ?
-                ORDER BY {} LIMIT 1
-                '''.format(
-                    order_by),
-                (country_code.upper(),))
+            f'''
+            SELECT * FROM location
+            WHERE is_postal_exchange_office = 1 and country_code = ?
+            ORDER BY {order_by} LIMIT 1
+            ''', (country_code.upper(),),
+        )
         r = c.fetchall()
         c.close()
         return r if r else None
 
     def search_coordinates_port(self, latitude, longitude, country_code):
-        """ search for an location based on coordinates """
+        """search for an location based on coordinates"""
         fudge = math.pow(math.cos(math.radians(latitude)), 2)
-        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
-                latitude, longitude, fudge)
+        # TODO: move this to a function to make DRY
+        order_by = (
+            f'(({latitude} - latitude) * ({latitude} - latitude) +'
+            f'({longitude} - longitude) * ({longitude} - longitude) * {fudge})'
+        )
         c = self.conn.cursor()
         c.execute(
-                '''
-                SELECT * FROM location
-                WHERE is_port = 1 and country_code = ?
-                ORDER BY {} LIMIT 1
-                '''.format(
-                    order_by),
-                (country_code.upper(),))
+            f'''
+            SELECT * FROM location
+            WHERE is_port = 1 and country_code = ?
+            ORDER BY {order_by} LIMIT 1
+            ''', (country_code.upper(),),
+        )
         r = c.fetchall()
         c.close()
         return r if r else None
 
     def search_coordinates(self, latitude, longitude, country_code):
-        """ search for an location based on coordinates """
+        """search for an location based on coordinates"""
         fudge = math.pow(math.cos(math.radians(latitude)), 2)
-        order_by = '(({0} - latitude) * ({0} - latitude) + ({1} - longitude) * ({1} - longitude) * {2})'.format(
-                latitude, longitude, fudge)
+        order_by = (
+            f'(({latitude} - latitude) * ({latitude} - latitude) +'
+            f'({longitude} - longitude) * ({longitude} - longitude) * {fudge})'
+        )
         c = self.conn.cursor()
         c.execute(
-                'SELECT * FROM location WHERE country_code = ? ORDER BY {} LIMIT 1'.format(order_by),
-                (country_code.upper(),))
+            f'SELECT * FROM location WHERE country_code = ? ORDER BY {order_by} LIMIT 1',
+            (country_code.upper(),),
+        )
         r = c.fetchall()
         c.close()
         return r if r else None
 
     def search_port_name_like(self, name):
-        """ return [] if could not found """
+        """return [] if could not found"""
         c = self.conn.cursor()
         name = name.replace("'", "''")
-        c.execute("""
+        c.execute(
+            f"""
             SELECT country_code, location_code, name, subdivision, is_port
             FROM location
-            WHERE name LIKE '%%%s%%' AND is_port=1
-        """ % name)
+            WHERE name LIKE '%%{name}%%' AND is_port=1
+            """
+        )
         ret = c.fetchall()
         c.close()
         return ret
 
     def gen_from_csv(self):
+        """Generate the CSV file."""
         c = self.conn.cursor()
         p_code = parser.CodeParser()
         p_sub = parser.SubdivisionParser()
@@ -328,15 +361,16 @@ class PyUnLocode():
             elif 'Subdivision' in filename:
                 p_sub.parse(c, join(CSVDIR, filename))
             else:
-                print 'skip unknow file : %s' % filename
+                print('skip unknow file : {filename}')
 
         self.conn.commit()
         c.close()
 
     def analytics(self, country=None):
+        """Print some DB analytics."""
         if country:
-            country_limit = " AND country_code='%s'" % country
-            country_limit_where = " WHERE country_code='%s'" % country
+            country_limit = f" AND country_code='{country}'"
+            country_limit_where = f" WHERE country_code='{country}'"
         else:
             country_limit = ''
             country_limit_where = ''
@@ -352,49 +386,35 @@ class PyUnLocode():
         airport_count = c.fetchone()[0]
         c.execute('SELECT COUNT(*) FROM location WHERE is_port=1' + country_limit)
         port_count = c.fetchone()[0]
-        c.execute('SELECT COUNT(*) FROM location WHERE is_road_terminal=1' + country_limit)
+        c.execute(
+            'SELECT COUNT(*) FROM location WHERE is_road_terminal=1' + country_limit
+        )
         road_terminal_count = c.fetchone()[0]
-        c.execute('SELECT COUNT(*) FROM location WHERE is_rail_terminal=1' + country_limit)
+        c.execute(
+            'SELECT COUNT(*) FROM location WHERE is_rail_terminal=1' + country_limit
+        )
         rail_terminal_count = c.fetchone()[0]
-        c.execute('SELECT COUNT(*) FROM location WHERE is_postal_exchange_office=1' + country_limit)
+        c.execute(
+            'SELECT COUNT(*) FROM location WHERE is_postal_exchange_office=1'
+            + country_limit
+        )
         postal_exchange_office_count = c.fetchone()[0]
-        c.execute('SELECT COUNT(*) FROM location WHERE is_border_cross=1' + country_limit)
+        c.execute(
+            'SELECT COUNT(*) FROM location WHERE is_border_cross=1' + country_limit
+        )
         border_cross_count = c.fetchone()[0]
         c.close()
 
-        print '============= BEGIN ============='
-        print 'country count = %d' % country_count
+        print('============= BEGIN =============')
+        print(f'country count = {country_count}')
         if country:
-            print '*** search country : "%s" ***' % country
-        print 'subdivision count = %d' % subdivision_count
-        print 'location count = %d' % location_count
-        print 'port count = %d' % port_count
-        print 'airport count = %d' % airport_count
-        print 'road terminal count = %d' % road_terminal_count
-        print 'rail terminal count = %d' % rail_terminal_count
-        print 'postal exchange office count = %d' % postal_exchange_office_count
-        print 'border cross count = %d' % border_cross_count
-        print '============= END ============='
-
-
-def main():
-    try:
-        u = PyUnLocode()
-        u.init()
-        u.gen_from_csv()
-        u.analytics()
-        u.analytics('TW')
-        print u.get_country_name('US')
-        print u.get_location_name('TW', 'TPE')
-        r = u.search_location_name_like('LOS ANGELES')
-        for c in r:
-            print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
-        u.close()
-
-    except: # noqa
-        import traceback
-        traceback.print_exc()
-
-
-if __name__ == '__main__':
-    main()
+            print(f'*** search country : "{country}" ***')
+        print(f'subdivision count = {subdivision_count}')
+        print(f'location count = {location_count}')
+        print(f'port count = {port_count}')
+        print(f'airport count = {airport_count}')
+        print(f'road terminal count = {road_terminal_count}')
+        print(f'rail terminal count = {rail_terminal_count}')
+        print(f'postal exchange office count = {postal_exchange_office_count}')
+        print(f'border cross count = {border_cross_count}')
+        print('============= END =============')

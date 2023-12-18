@@ -2,10 +2,6 @@ pyunlocode
 ====================
 Python wrap module for UN/LOCODE
 
-Version
--------------------
-0.9
-
 UN/LOCODE data
 -------------------
 * data from [UN ECE]
@@ -27,8 +23,8 @@ $ python pyunlocode.py
 import pyunlocode
 u = pyunlocode.PyUnLocode()
 u.init()
-print u.get_country_name('US')
-print u.get_city_name('TW', 'TPE')
+print(u.get_country_name('US'))
+printr(u.get_location_name('TW', 'TPE'))
 u.close()
 ```
 

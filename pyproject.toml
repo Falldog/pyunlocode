@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyunlocode"
+version = "0.1.0"
+authors = [{name = "John Bond", email = "pypi@johnbond.org"}, {name = "Falldog"}]
+license = {text = "Artistic-2.0"}
+description = "Librarys to check zones configuered on a server are working"
+keywords = []
+urls = {Homepage = "https://github.com/b4ldr/pyunlocode"}
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+]
+[project.scripts]
+pyunlocode-init-db = "pyunlocode.init_db:main"
+
+[tool.setuptools]
+packages = ["pyunlocode"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+pyunlocode = [
+    "csv/2016-1 UNLOCODE CodeListPart1.csv",
+    "csv/2016-1 UNLOCODE CodeListPart2.csv",
+    "csv/2016-1 UNLOCODE CodeListPart3.csv",
+    "csv/2016-1 SubdivisionCodes.csv",
+    "unlocode.db",
+]
+
+[tool.pylint]
+max-line-length = 100
+
