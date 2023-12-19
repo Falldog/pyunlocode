@@ -26,10 +26,10 @@ include-package-data = false
 
 [tool.setuptools.package-data]
 pyunlocode = [
-    "csv/2016-1 UNLOCODE CodeListPart1.csv",
-    "csv/2016-1 UNLOCODE CodeListPart2.csv",
-    "csv/2016-1 UNLOCODE CodeListPart3.csv",
-    "csv/2016-1 SubdivisionCodes.csv",
+    "csv/2023-1 UNLOCODE CodeListPart1.csv",
+    "csv/2023-1 UNLOCODE CodeListPart2.csv",
+    "csv/2023-1 UNLOCODE CodeListPart3.csv",
+    "csv/2023-1 SubdivisionCodes.csv",
     "unlocode.db",
 ]
 
