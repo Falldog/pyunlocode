@@ -175,7 +175,7 @@ class PyUnLocode():
             elif 'Subdivision' in filename:
                 p_sub.parse(c, join(CSVDIR, filename))
             else:
-                print 'skip unknow file : %s' % filename
+                print('skip unknow file : %s' % filename)
 
         self.conn.commit()
         c.close()
@@ -209,19 +209,19 @@ class PyUnLocode():
         border_cross_count = c.fetchone()[0]
         c.close()
 
-        print '============= BEGIN ============='
-        print 'country count = %d' % country_count
+        print('============= BEGIN =============')
+        print('country count = %d' % country_count)
         if country:
-            print '*** search country : "%s" ***' % country
-        print 'subdivision count = %d' % subdivision_count
-        print 'location count = %d' % location_count
-        print 'port count = %d' % port_count
-        print 'airport count = %d' % airport_count
-        print 'road terminal count = %d' % road_terminal_count
-        print 'rail terminal count = %d' % rail_terminal_count
-        print 'postal exchange office count = %d' % postal_exchange_office_count
-        print 'border cross count = %d' % border_cross_count
-        print '============= END ============='
+            print('*** search country : "%s" ***' % country)
+        print('subdivision count = %d' % subdivision_count)
+        print('location count = %d' % location_count)
+        print('port count = %d' % port_count)
+        print('airport count = %d' % airport_count)
+        print('road terminal count = %d' % road_terminal_count)
+        print('rail terminal count = %d' % rail_terminal_count)
+        print('postal exchange office count = %d' % postal_exchange_office_count)
+        print('border cross count = %d' % border_cross_count)
+        print('============= END =============')
 
 
 def main():
@@ -231,11 +231,11 @@ def main():
         u.gen_from_csv()
         u.analytics()
         u.analytics('TW')
-        print u.get_country_name('US')
-        print u.get_location_name('TW', 'TPE')
+        print(u.get_country_name('US'))
+        print(u.get_location_name('TW', 'TPE'))
         r = u.search_location_name_like('LOS ANGELES')
         for c in r:
-            print "code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name'])
+            print("code:%s%s name:%s" % (c['country_code'], c['location_code'], c['name']))
         u.close()
 
     except:

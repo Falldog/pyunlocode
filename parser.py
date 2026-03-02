@@ -22,11 +22,11 @@ class SubdivisionParser(object):
         Columns :
             CountryCode, SubdivisionCode, SubdivisionName, Type?
         """
-        with open(filepath, 'rb') as f:
+        with open(filepath, 'r', encoding=ENCODING) as f:
             data_reader = csv.reader(f, delimiter=DELIMITER, quotechar=QUOT_CHAR)
             for row in data_reader:
                 country_code, subdivision_code, subdivision_name, _type = row
-                subdivision_name = subdivision_name.decode(ENCODING)
+                subdivision_name = subdivision_name
                 cursor.execute(
                     "INSERT OR REPLACE INTO subdivision VALUES (?,?,?)",
                     (country_code,
@@ -70,7 +70,7 @@ class CodeParser(object):
             (DDMM[N/S] DDDMM[W/E])
         """
 
-        with open(filepath, 'rb') as f:
+        with open(filepath, 'r', encoding=ENCODING) as f:
             data_reader = csv.reader(f, delimiter=DELIMITER, quotechar=QUOT_CHAR)
             for row in data_reader:
                 change = row[0]
@@ -84,7 +84,7 @@ class CodeParser(object):
                 change, country_code, location_code, location_name, location_name_wo_diacritics, subdivision, function, status, date, iata, coordinate, remark = row
 
                 if location_name and location_name[0] == '.':  # country name
-                    name = location_name.decode(ENCODING)[1:]  # filter the first char "."
+                    name = location_name[1:]  # filter the first char "."
                     name = name.split(',')[0]
                     cursor.execute(
                         "INSERT OR REPLACE INTO country VALUES (?,?)",
@@ -93,10 +93,10 @@ class CodeParser(object):
 
                 else:  # location name
                     if not location_code:
-                        print '*** skip unknow location code record : %s' % row
+                        print('*** skip unknow location code record : %s' % row)
                         continue
 
-                    remark = remark.decode(ENCODING)
+                    remark = remark
                     is_port = '1' in function
                     is_airport = '4' in function
                     is_rail_terminal = '2' in function
